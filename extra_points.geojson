@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "杉本キャンパス" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [135.505276, 34.592331]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "なかもずキャンパス" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [135.506274, 34.544865]
+      }
+    }
+  ]
+}
