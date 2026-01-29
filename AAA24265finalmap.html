@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>finalmap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <link rel="stylesheet" href="index.css">
+  <style>
+    .panel{
+      position:absolute;left:10px;bottom:10px;z-index:1000;
+      background:rgba(255,255,255,0.9);padding:10px;font-size:14px;
+    }
+    .panel input[type="text"]{width:260px;}
+  </style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="panel">
+  <div>
+    <input type="button" value="出発地点を選択" onclick="selectionMode='start';">
+    <input id="startPoint" type="text">
+  </div>
+  <div style="margin-top:6px;">
+    <input type="button" value="目的地を選択" onclick="selectionMode='goal';">
+    <input id="goalPoint" type="text">
+  </div>
+  <div style="margin-top:6px;">
+    <input type="button" value="ルート検索" onclick="searchRoute()">
+    <input type="button" value="ルート削除" onclick="removeRoute()">
+  </div>
+</div>
+
+<script>
+const map = L.map('map').setView([34.565865,135.506274],12);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+let selectionMode=null;
+let startMarker=null;
+let goalMarker=null;
+let routeLayer=null;
+
+map.on('click',e=>{
+  const lat=e.latlng.lat;
+  const lng=e.latlng.lng;
+
+  if(selectionMode==='start'){
+    if(startMarker)startMarker.remove();
+    startMarker=L.marker([lat,lng]).addTo(map);
+    document.getElementById("startPoint").value=
+      lng.toFixed(6)+","+lat.toFixed(6);
+  }
+
+  if(selectionMode==='goal'){
+    if(goalMarker)goalMarker.remove();
+    goalMarker=L.marker([lat,lng]).addTo(map);
+    document.getElementById("goalPoint").value=
+      lng.toFixed(6)+","+lat.toFixed(6);
+  }
+});
+
+async function searchRoute(){
+  const s=document.getElementById("startPoint").value;
+  const g=document.getElementById("goalPoint").value;
+  const url='https://routing.openstreetmap.de/routed-car/route/v1/driving/'
+            +s+';'+g+'?geometries=geojson&overview=full';
+  const res=await fetch(url);
+  const json=await res.json();
+  if(routeLayer)routeLayer.remove();
+  routeLayer=L.geoJSON(json.routes[0].geometry,{
+    color:"#FF00FF",weight:6,opacity:0.7
+  }).addTo(map);
+  map.fitBounds(routeLayer.getBounds());
+}
+
+function removeRoute(){
+  if(routeLayer)routeLayer.remove();
+  routeLayer=null;
+}
+
+$.getJSON("your_area.geojson",data=>{
+  L.geoJSON(data,{style:{color:"#0066cc",weight:2,fillOpacity:0.1}})
+   .addTo(map);
+});
+
+$.getJSON("extra_points.geojson",data=>{
+  L.geoJSON(data,{
+    pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:6}),
+    onEachFeature:(f,l)=>l.bindPopup(f.properties?.name||"point")
+  }).addTo(map);
+});
+
+const eqIcon=L.icon({
+  iconUrl:"shingen.png",
+  iconSize:[40,40],
+  iconAnchor:[20,20]
+});
+
+$.getJSON("https://api.p2pquake.net/v2/history?codes=551",data=>{
+  data.forEach(r=>{
+    const h=r.earthquake.hypocenter;
+    if(h.latitude<0||h.longitude<0)return;
+    L.marker([h.latitude,h.longitude],{icon:eqIcon})
+      .addTo(map)
+      .bindPopup("震源地："+(h.name||"不明")+"<br>M"+h.magnitude);
+  });
+});
+</script>
+</body>
+</html>
